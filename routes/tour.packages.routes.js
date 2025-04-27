@@ -1,12 +1,18 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const tourPackagesController = require("../controller/tour.packages");
+const packageController = require('../controller/tour.packages');
 
-router.get("/", tourPackagesController.getAllTourPackages);
-router.get("/:id", tourPackagesController.getTourPackageById);
-router.post("/", tourPackagesController.createTourPackage);
-router.put("/:id", tourPackagesController.updateTourPackage);
-router.delete("/:id", tourPackagesController.deleteTourPackage);
+// Create
+router.post('/', packageController.createPackage);
+// Read all
+router.get('/', packageController.getAllPackages);
+// Read one
+router.get('/:id', packageController.getPackageById);
+// Update
+router.put('/:id', packageController.updatePackage);
+// Delete
+router.delete('/:id', packageController.deletePackage);
 
 module.exports = router;
+
 

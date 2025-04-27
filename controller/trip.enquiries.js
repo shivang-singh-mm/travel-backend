@@ -1,13 +1,12 @@
-const pool = require("../config/db");
+const UserQuery = require("../models/UserQuery");
 const log = require("../config/logger");
-const { v4: uuidv4 } = require("uuid");
 
 // GET all user queries
 exports.getAllQueries = async (req, res) => {
     try {
-        const result = await pool.query("SELECT * FROM user_queries");
+        const queries = await UserQuery.find().sort({ _id: -1 });
         log("info", "Fetched all user queries", req, 200);
-        res.json(result.rows);
+        res.json(queries);
     } catch (error) {
         log("error", "Error fetching user queries", req, 500, error);
         res.status(500).json({ error: "Error fetching user queries" });
@@ -18,15 +17,15 @@ exports.getAllQueries = async (req, res) => {
 exports.getQueryById = async (req, res) => {
     const { id } = req.params;
     try {
-        const result = await pool.query("SELECT * FROM user_queries WHERE id = $1", [id]);
+        const query = await UserQuery.findById(id);
 
-        if (result.rows.length === 0) {
+        if (!query) {
             log("warn", `Query with ID ${id} not found`, req, 404);
             return res.status(404).json({ error: "Query not found" });
         }
 
         log("info", `Fetched query with ID: ${id}`, req, 200);
-        res.json(result.rows[0]);
+        res.json(query);
     } catch (error) {
         log("error", `Error fetching query with ID ${id}`, req, 500, error);
         res.status(500).json({ error: "Error fetching query" });
@@ -35,16 +34,12 @@ exports.getQueryById = async (req, res) => {
 
 // CREATE a new user query
 exports.createQuery = async (req, res) => {
-    const { name, email, number, number_of_persons, destination, information } = req.body;
-    const id = uuidv4();
     try {
-        const result = await pool.query(
-            "INSERT INTO user_queries (id, name, email, number, number_of_persons, destination, information) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
-            [id, name, email, number, number_of_persons, destination, information]
-        );
+        const newQuery = new UserQuery(req.body);
+        const savedQuery = await newQuery.save();
 
-        log("info", `Created query with ID: ${id}`, req, 201);
-        res.status(201).json(result.rows[0]);
+        log("info", "Created query", req, 201);
+        res.status(201).json(savedQuery);
     } catch (error) {
         log("error", "Error creating user query", req, 500, error);
         res.status(500).json({ error: "Error creating user query" });
@@ -54,20 +49,16 @@ exports.createQuery = async (req, res) => {
 // UPDATE an existing query
 exports.updateQuery = async (req, res) => {
     const { id } = req.params;
-    const { name, email, number, number_of_persons, destination, information } = req.body;
     try {
-        const result = await pool.query(
-            "UPDATE user_queries SET name = $1, email = $2, number = $3, number_of_persons = $4, destination = $5, information = $6 WHERE id = $7 RETURNING *",
-            [name, email, number, number_of_persons, destination, information, id]
-        );
+        const updatedQuery = await UserQuery.findByIdAndUpdate(id, req.body, { new: true });
 
-        if (result.rows.length === 0) {
+        if (!updatedQuery) {
             log("warn", `Query with ID ${id} not found`, req, 404);
             return res.status(404).json({ error: "Query not found" });
         }
 
         log("info", `Updated query with ID: ${id}`, req, 200);
-        res.json(result.rows[0]);
+        res.json(updatedQuery);
     } catch (error) {
         log("error", `Error updating query with ID ${id}`, req, 500, error);
         res.status(500).json({ error: "Error updating query" });
@@ -78,9 +69,9 @@ exports.updateQuery = async (req, res) => {
 exports.deleteQuery = async (req, res) => {
     const { id } = req.params;
     try {
-        const result = await pool.query("DELETE FROM user_queries WHERE id = $1 RETURNING *", [id]);
+        const deletedQuery = await UserQuery.findByIdAndDelete(id);
 
-        if (result.rows.length === 0) {
+        if (!deletedQuery) {
             log("warn", `Query with ID ${id} not found`, req, 404);
             return res.status(404).json({ error: "Query not found" });
         }
@@ -92,4 +83,5 @@ exports.deleteQuery = async (req, res) => {
         res.status(500).json({ error: "Error deleting query" });
     }
 };
+
 

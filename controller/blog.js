@@ -1,12 +1,12 @@
-const pool = require("../config/db");
+const Blog = require("../models/Blog");
 const log = require("../config/logger");
 
 // GET all blogs
 exports.getAllBlogs = async (req, res) => {
     try {
-        const result = await pool.query("SELECT * FROM blog ORDER BY id DESC");
+        const blogs = await Blog.find().sort({ createdAt: -1 });
         log("info", "Fetched all blogs", req, 200);
-        res.json(result.rows);
+        res.json(blogs);
     } catch (error) {
         log("error", "Error fetching blogs", req, 500, error);
         res.status(500).json({ error: "Error fetching blogs" });
@@ -17,15 +17,13 @@ exports.getAllBlogs = async (req, res) => {
 exports.getBlogById = async (req, res) => {
     const { id } = req.params;
     try {
-        const result = await pool.query("SELECT * FROM blog WHERE id = $1", [id]);
-
-        if (result.rows.length === 0) {
+        const blog = await Blog.findById(id);
+        if (!blog) {
             log("warn", `Blog with ID ${id} not found`, req, 404);
             return res.status(404).json({ error: "Blog not found" });
         }
-
         log("info", `Fetched blog with ID: ${id}`, req, 200);
-        res.json(result.rows[0]);
+        res.json(blog);
     } catch (error) {
         log("error", `Error fetching blog with ID ${id}`, req, 500, error);
         res.status(500).json({ error: "Error fetching blog" });
@@ -37,14 +35,10 @@ exports.createBlog = async (req, res) => {
     const { title, description, url } = req.body;
 
     try {
-        const result = await pool.query(
-            `INSERT INTO blog (title, description, url) 
-       VALUES ($1, $2, $3) RETURNING *`,
-            [title, description, url]
-        );
-
-        log("info", `Created blog with ID: ${result.rows[0].id}`, req, 201);
-        res.status(201).json(result.rows[0]);
+        const newBlog = new Blog({ title, description, url });
+        const savedBlog = await newBlog.save();
+        log("info", `Created blog with ID: ${savedBlog._id}`, req, 201);
+        res.status(201).json(savedBlog);
     } catch (error) {
         log("error", "Error creating blog", req, 500, error);
         res.status(500).json({ error: "Error creating blog" });
@@ -54,23 +48,22 @@ exports.createBlog = async (req, res) => {
 // UPDATE an existing blog
 exports.updateBlog = async (req, res) => {
     const { id } = req.params;
-    const { title, description } = req.body;
+    const { title, description, url } = req.body;
 
     try {
-        const result = await pool.query(
-            `UPDATE blog 
-       SET title = $1, description = $2
-       WHERE id = $3 RETURNING *`,
-            [title, description, id]
+        const updatedBlog = await Blog.findByIdAndUpdate(
+            id,
+            { title, description, url },
+            { new: true }
         );
 
-        if (result.rows.length === 0) {
+        if (!updatedBlog) {
             log("warn", `Blog with ID ${id} not found`, req, 404);
             return res.status(404).json({ error: "Blog not found" });
         }
 
         log("info", `Updated blog with ID: ${id}`, req, 200);
-        res.json(result.rows[0]);
+        res.json(updatedBlog);
     } catch (error) {
         log("error", `Error updating blog with ID ${id}`, req, 500, error);
         res.status(500).json({ error: "Error updating blog" });
@@ -81,9 +74,9 @@ exports.updateBlog = async (req, res) => {
 exports.deleteBlog = async (req, res) => {
     const { id } = req.params;
     try {
-        const result = await pool.query("DELETE FROM blog WHERE id = $1 RETURNING *", [id]);
+        const deletedBlog = await Blog.findByIdAndDelete(id);
 
-        if (result.rows.length === 0) {
+        if (!deletedBlog) {
             log("warn", `Blog with ID ${id} not found`, req, 404);
             return res.status(404).json({ error: "Blog not found" });
         }
@@ -95,3 +88,4 @@ exports.deleteBlog = async (req, res) => {
         res.status(500).json({ error: "Error deleting blog" });
     }
 };
+

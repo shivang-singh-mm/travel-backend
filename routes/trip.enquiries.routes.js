@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const userQueriesController = require("../controllers/userQueriesController");
+const userQueriesController = require("../controller/trip.enquiries");
 
 router.get("/", userQueriesController.getAllQueries);
 router.get("/:id", userQueriesController.getQueryById);

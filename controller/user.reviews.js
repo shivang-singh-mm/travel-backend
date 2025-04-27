@@ -1,12 +1,12 @@
-const pool = require("../config/db");
+const Review = require("../models/Review");
 const log = require("../config/logger");
 
 // GET all reviews
 exports.getAllReviews = async (req, res) => {
     try {
-        const result = await pool.query("SELECT * FROM reviews ORDER BY id DESC");
+        const reviews = await Review.find().sort({ _id: -1 });
         log("info", "Fetched all reviews", req, 200);
-        res.json(result.rows);
+        res.json(reviews);
     } catch (error) {
         log("error", "Error fetching reviews", req, 500, error);
         res.status(500).json({ error: "Error fetching reviews" });
@@ -17,15 +17,15 @@ exports.getAllReviews = async (req, res) => {
 exports.getReviewById = async (req, res) => {
     const { id } = req.params;
     try {
-        const result = await pool.query("SELECT * FROM reviews WHERE id = $1", [id]);
+        const review = await Review.findById(id);
 
-        if (result.rows.length === 0) {
+        if (!review) {
             log("warn", `Review with ID ${id} not found`, req, 404);
             return res.status(404).json({ error: "Review not found" });
         }
 
         log("info", `Fetched review with ID: ${id}`, req, 200);
-        res.json(result.rows[0]);
+        res.json(review);
     } catch (error) {
         log("error", `Error fetching review with ID ${id}`, req, 500, error);
         res.status(500).json({ error: "Error fetching review" });
@@ -37,14 +37,11 @@ exports.createReview = async (req, res) => {
     const { name, occupation, review, star_number, url } = req.body;
 
     try {
-        const result = await pool.query(
-            `INSERT INTO reviews (name, occupation, review, star_number, url) 
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-            [name, occupation, review, star_number, url]
-        );
+        const newReview = new Review({ name, occupation, review, star_number, url });
+        const savedReview = await newReview.save();
 
-        log("info", `Created review with ID: ${result.rows[0].id}`, req, 201);
-        res.status(201).json(result.rows[0]);
+        log("info", `Created review with ID: ${savedReview._id}`, req, 201);
+        res.status(201).json(savedReview);
     } catch (error) {
         log("error", "Error creating review", req, 500, error);
         res.status(500).json({ error: "Error creating review" });
@@ -54,23 +51,22 @@ exports.createReview = async (req, res) => {
 // UPDATE an existing review
 exports.updateReview = async (req, res) => {
     const { id } = req.params;
-    const { name, occupation, review, star_number } = req.body;
+    const { name, occupation, review, star_number, url } = req.body;
 
     try {
-        const result = await pool.query(
-            `UPDATE reviews 
-       SET name = $1, occupation = $2, review = $3, star_number = $4 
-       WHERE id = $5 RETURNING *`,
-            [name, occupation, review, star_number, id]
+        const updatedReview = await Review.findByIdAndUpdate(
+            id,
+            { name, occupation, review, star_number, url },
+            { new: true }
         );
 
-        if (result.rows.length === 0) {
+        if (!updatedReview) {
             log("warn", `Review with ID ${id} not found`, req, 404);
             return res.status(404).json({ error: "Review not found" });
         }
 
         log("info", `Updated review with ID: ${id}`, req, 200);
-        res.json(result.rows[0]);
+        res.json(updatedReview);
     } catch (error) {
         log("error", `Error updating review with ID ${id}`, req, 500, error);
         res.status(500).json({ error: "Error updating review" });
@@ -80,10 +76,11 @@ exports.updateReview = async (req, res) => {
 // DELETE a review
 exports.deleteReview = async (req, res) => {
     const { id } = req.params;
-    try {
-        const result = await pool.query("DELETE FROM reviews WHERE id = $1 RETURNING *", [id]);
 
-        if (result.rows.length === 0) {
+    try {
+        const deletedReview = await Review.findByIdAndDelete(id);
+
+        if (!deletedReview) {
             log("warn", `Review with ID ${id} not found`, req, 404);
             return res.status(404).json({ error: "Review not found" });
         }
@@ -95,4 +92,3 @@ exports.deleteReview = async (req, res) => {
         res.status(500).json({ error: "Error deleting review" });
     }
 };
-
